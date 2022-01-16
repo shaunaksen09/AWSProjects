@@ -1,0 +1,47 @@
+Project 3 Solution Steps. 
+
+1. Launch the network  - 
+2. Launch the vpn machine    -- 
+3. Setup the vpn environment  --
+4. Launch the mysql-ec2 instance   -- 
+5. Launch the EB with sample app  --  
+6. Commit the code to the git-hub repo -- 
+7. Launch the Code-Pipeline for deplyment.  - 
+8. Test the deployment 
+
+################################
+
+Mysql DB setup : 
+
+
+1. Install Mysql DB in any ec2 machine prefred is ubuntu 16.04. 
+2. Command to craete DB is apt install mysql-server.
+3. Run mysql with secure_installation - please refer: https://www.digitalocean.com/community/tutorials/how-to-install-mysql-on-ubuntu-16-04
+Set mysql root password as you wish.
+4. Create mysql-db with name test. 
+5. Create tables in-side the DB. 
+
+Follow these steps to create DB and tables; 
+
+create database test;
+
+use test;
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL auto_increment,
+  `name` varchar(100) NOT NULL,
+  `age` int(3) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  PRIMARY KEY  (`id`)
+);
+
+
+## After doing above just run the below command in mysql db.  [admin]
+
+Command : mysql -u root -p
+
+command : use mysql ;
+
+mysql >  GRANT ALL ON *.* to root@'10.0.14.29' IDENTIFIED BY 'admin';     [This command will allow ur ec2 machine to access your mysql db]
+
+flush privileges;

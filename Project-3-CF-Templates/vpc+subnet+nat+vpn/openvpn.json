@@ -1,0 +1,28 @@
+[
+  {
+    "ParameterKey": "KeyName",
+    "ParameterValue": "project3"
+  },
+  {
+    "ParameterKey": "OpenVPNAdminPassword",
+    "ParameterValue": "Tory1c0m#0penVpn"
+  },
+  {
+    "ParameterKey": "OpenVPNAdminUser",
+    "ParameterValue": "openvpn"
+  },
+
+  {
+    "ParameterKey": "OpenVPNInstanceEipAllocation",
+    "ParameterValue": "eipalloc-02d367b8"
+  },
+
+  {
+    "ParameterKey": "OpenVPNInstanceType",
+    "ParameterValue": "t1.micro"
+  },
+  {
+    "ParameterKey": "PrefixName",
+    "ParameterValue": "openvpn"
+  }
+]

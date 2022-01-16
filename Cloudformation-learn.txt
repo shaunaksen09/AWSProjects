@@ -1,0 +1,45 @@
+Cloudformation Templates: 
+
+1. Resource
+2. Parameters
+3. Mapping 
+4. OutPuts
+5. Conditions
+6. Metadata
+7. CFN init and Ec2 User data
+
+
+# Parameters : It can be controlled by all these settings:
+
+$ Type: 
+  string - Half of numiric characters to specify any kind of password or anything
+  Number - just numbers to specify ports
+  CommaDelimited List - Mostly used to define the range of ip address.
+  List<Type>  - List of any type or numbers
+  AWS Parameters (to help catch invalid values - match against existing value in the aws Account)
+ex: security group id , if you are using this then only the sg-id of ur account is the valid value for this parameters.
+  
+$ Description - To be represent anything
+$ Constraints - To restrict the value like numbers should be between 1 to 10 or 0-9 like this not above or not below values are accepted.
+$ Constraints Description (String) : This is again use to represent the Constraints , So if any error occurs it will show the exact error value. 
+$ Min/MaxLength - Mostly used to define the password or any kind of specific values.
+$ Min/MaxValue - Mostly use to define the range of value like port number should be 0-6000.
+$ Defaults - The defaults value
+$ AllowedValues (Array)  - This should be an array , to create multiple choice.
+$ AllowedPattern (regexp) :  Here you can define the regexp 
+$ NoEcho (Boolean) : To hide the password or any secret kind of value.
+
+
+## Resources 
+
+Resources are the core of cloudformation template.
+They represent the different AWS components that will be created and configured
+Resources are declared and can be refrence each other
+AWS figures out creation, updates and deletes of resources for us.
+
+Syntax : 
+
+AWS: aws-product-name::data-tupe-name
+
+
+

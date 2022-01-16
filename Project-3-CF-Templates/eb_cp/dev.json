@@ -1,0 +1,20 @@
+[
+
+ {
+     "ParameterKey": "DeploymentType",
+     "ParameterValue": "non-production"
+ },
+ {
+     "ParameterKey": "PrimaryDNSName",
+     "ParameterValue": "dev-tech"
+ },
+ {
+     "ParameterKey": "S3Bucket",
+     "ParameterValue": "techmart-eb-app"
+ },
+  {
+     "ParameterKey": "SQSQueue",
+     "ParameterValue": "code-events"
+ }
+
+]

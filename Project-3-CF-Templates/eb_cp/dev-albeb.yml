@@ -1,0 +1,368 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Cloudformation template for Mobile app techmart php application Multi Docker container environment
+Mappings:
+  ########################################################################
+  ##                                                                    ##
+  ## The idea here is that during the deployment it is only selected    ##
+  ## which type of deployment is done. It can be either "production"    ##
+  ## or "non-production". Based on the administrator selection, various ##
+  ## sizing, throughput and performance values are selected right here. ##
+  ## So, the admin deploying the stack does not necessarily need to     ##
+  ## understand technical details, becuse project engineers already     ##
+  ## did the work for him.                                              ##
+  ##                                                                    ##
+  ########################################################################
+  deploymentTypeMap:
+    ##
+    ## PRODUCTION, performance testing, full-size data set.
+    ##
+    'production':
+      instanceType:  "m3.medium"
+      instanceCountMin: "2"
+      instanceCountMax: "8"
+      cacheClusterSize: "cache.m3.medium"
+      cacheClusterNodes: "2"
+    ##
+    ## Development, stage, QA, user acceptance testing.
+    ##
+    'non-production':
+      instanceType:  "t2.small"
+      instanceCountMin: "1"
+      instanceCountMax: "2"
+
+  ##########################################################
+  ##                                                      ##
+  ## Environment bindings. Various settings which can be  ##
+  ## determined internally by CF simply knowing which AWS ##
+  ## account is used for deployment and knowing in which  ##
+  ## region the stack is deployed.                        ##
+  ##                                                      ##
+  ##########################################################
+  ##
+  ## Development/Stage environment account.
+  ##
+  '242450823403':
+    ##
+    ## The primary deployment site in ap-southeast-1.
+    ##
+    us-east-1:
+      keyName: demo
+      vpcId: vpc-007ff38fc718567ab
+      elbSubnets: 'subnet-0ec7dc45e74f84e0d,subnet-0c626305235dadfd3'
+      ec2Subnets: 'subnet-0c21bdbaecf20404a,subnet-0becd9bdabbeaf036'
+      dnsZone: techtestnew.tk.
+      amiId: ami-03790879
+      SecGroups: sg-080f2376ac4c69c8d
+  ##
+  ## Production environment account.
+  ##
+  '789376294778929':
+    ##
+    ## The primary deployment site in ap-southeast-1.
+    ##
+    us-east-11:
+      keyName: demo-Virg-cluster
+      vpcId: vpc-2082c547
+      elbSubnets: 'subnet-5fecf175,subnet-c3864a8a'
+      ec2Subnets: 'subnet-62874b2b,subnet-ddecf1f7'
+      dnsZone: abc.com.
+      amiId: ami-1cb6b467
+      SecGroups: sg-5469c72e
+
+  ###############
+  ##           ##
+  ## CONSTANTS ##
+  ##           ##
+  ###############
+  CONS:
+    TANT:
+      solutionStack: "64bit Amazon Linux 2018.03 v2.11.2 running Multi-container Docker 18.03.1-ce (Generic)"
+      deploymentPackagesBucket: "cfn-beanstalk-application"
+
+Parameters:
+  DeploymentType:
+    Type: String
+    AllowedValues:
+    - "production"
+    - "non-production"
+    Default: "non-production"
+    Description: >
+        Type of deployment. Select _production_ if this deployment is
+        for production or for performance testing or it is going to
+        contain full-size data, otherwise use _non-production_. Based
+        on this selection, appropriate sizing and performance values
+        are selected internally.
+  SSLCertificateARN:
+    Description: ARN of the ACM certificate for the application
+    Type: String
+    Default: ''
+  PrimaryDNSName:
+    Type: String
+    Default: dev-tech
+    Description: >
+        In form of <app>.<purpose>, e.g 'techmart.dev'. The value will be
+        prepended to registered zone name for the environment, where the
+        stack is deployed, so the resulting name will be like
+        'techmart.tk'.
+  S3Bucket:
+    Type: String
+    Default: techmart-eb-app
+    Description: S3 bucket used
+  SQSQueue:
+    Type: String
+    Default: sapse1-demo-events
+    Description: SQS Queue name, -slow will be added
+Conditions:
+  HasSSLCert:
+    !Not [ !Equals [ !Ref  SSLCertificateARN , "" ] ]
+Resources:
+  AWSElasticBeanstalkServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: elasticbeanstalk.amazonaws.com
+          Action:
+          - sts:AssumeRole
+          Condition:
+            StringEquals:
+              sts:ExternalId: elasticbeanstalk
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+      - arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
+
+  AWSElasticBeanstalkECSContainerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSElasticBeanstalkWebTier
+      - arn:aws:iam::aws:policy/AWSElasticBeanstalkMulticontainerDocker
+      Policies:
+      - PolicyName: BeanstalkECRAccess
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ecr:GetAuthorizationToken
+            - ecr:BatchCheckLayerAvailability
+            - ecr:GetDownloadUrlForLayer
+            - ecr:GetRepositoryPolicy
+            - ecr:DescribeRepositories
+            - ecr:ListImages
+            - ecr:BatchGetImage
+            Resource: '*'
+      - PolicyName: Allow-My-S3-Bucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: s3:*
+            Resource:
+              - Fn::Join:
+                - ''
+                - - "arn:aws:s3:::"
+                  - !Ref S3Bucket
+              - Fn::Join:
+                - ''
+                - - "arn:aws:s3:::"
+                  - !Ref S3Bucket
+                  - "/*"
+              - "arn:aws:s3:::cfn-beanstalk-application"
+              - "arn:aws:s3:::cfn-beanstalk-application/*"
+      - PolicyName: Allow-My-SQS-Queue
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: SQS:SendMessage
+            Resource:
+              - Fn::Join:
+                - ''
+                - -  "arn:aws:sqs::"
+                  - Ref: AWS::AccountId
+                  - ":"
+                  - !Ref SQSQueue
+              - Fn::Join:
+                - ''
+                - -  "arn:aws:sqs::"
+                  - Ref: AWS::AccountId
+                  - ":"
+                  - !Ref SQSQueue
+                  - "-slow"
+
+  BeanstalkInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+      - Ref: AWSElasticBeanstalkECSContainerRole
+
+  EBApplication:
+    Type: AWS::ElasticBeanstalk::Application
+    Properties:
+      Description: "dev-eb"
+      ApplicationVersions:
+      - VersionLabel: Initial setup
+        Description: Sample Application
+        SourceBundle:
+          S3Bucket: !Ref S3Bucket
+          S3Key: docker-multicontainer-v2.zip
+
+  EBEnvironment:
+    Type: AWS::ElasticBeanstalk::Environment
+    Properties:
+      ApplicationName:
+        Ref: EBApplication
+      VersionLabel: Initial setup
+      SolutionStackName: !FindInMap [ CONS, TANT, "solutionStack" ]
+      OptionSettings:
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: EC2KeyName
+        Value: !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "keyName" ]
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: InstanceType
+        Value: !FindInMap [ "deploymentTypeMap", !Ref "DeploymentType", "instanceType" ]
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value: !Ref BeanstalkInstanceProfile
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: ImageId
+        Value: !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "amiId" ]
+      - Namespace: aws:elasticbeanstalk:environment
+        OptionName: ServiceRole
+        Value: !Ref AWSElasticBeanstalkServiceRole
+      - Namespace: aws:autoscaling:asg
+        OptionName: MinSize
+        Value: !FindInMap [ "deploymentTypeMap", !Ref "DeploymentType", "instanceCountMin" ]
+      - Namespace: aws:autoscaling:asg
+        OptionName: MaxSize
+        Value: !FindInMap [ "deploymentTypeMap", !Ref "DeploymentType", "instanceCountMax" ]
+      - Namespace: aws:autoscaling:asg
+        OptionName: Availability Zones
+        Value: 'Any'
+      - Namespace: aws:elasticbeanstalk:environment
+        OptionName: EnvironmentType
+        Value: LoadBalanced
+      - Namespace: aws:elasticbeanstalk:environment
+        OptionName: LoadBalancerType
+        Value: application
+      - Namespace: aws:elasticbeanstalk:environment:process:default
+        OptionName: Protocol
+        Value: HTTP
+      - Namespace: aws:ec2:vpc
+        OptionName: Subnets
+        Value: !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "ec2Subnets" ]
+      - Namespace: aws:ec2:vpc
+        OptionName: ELBSubnets
+        Value: !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "elbSubnets" ]
+      - Namespace: aws:ec2:vpc
+        OptionName: ELBScheme
+        Value: internet-facing
+      - Namespace: aws:autoscaling:launchconfiguration
+        OptionName: IamInstanceProfile
+        Value: !Ref BeanstalkInstanceProfile
+      - Namespace: aws:ec2:vpc
+        OptionName: VPCId
+        Value: !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "vpcId" ]
+      - Namespace: aws:elasticbeanstalk:sns:topics
+        OptionName: Notification Endpoint
+        Value: techmartguru@gmail.com
+      - Namespace: aws:elasticbeanstalk:healthreporting:system
+        OptionName: SystemType
+        Value: Enhanced
+      - Namespace: aws:elasticbeanstalk:healthreporting:system
+        OptionName: HealthCheckSuccessThreshold
+        Value: Ok
+      - Namespace: aws:elasticbeanstalk:monitoring
+        OptionName: "Automatically Terminate Unhealthy Instances"
+        Value: true
+      - Namespace: aws:elasticbeanstalk:command
+        OptionName: BatchSize
+        Value: '30'
+      - Namespace: aws:elasticbeanstalk:command
+        OptionName: DeploymentPolicy
+        Value: RollingWithAdditionalBatch
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: RollingUpdateEnabled
+        Value: true
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: RollingUpdateType
+        Value: Health
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: PauseTime
+        Value: PT60S
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: Timeout
+        Value: PT30M
+      - Namespace: aws:autoscaling:updatepolicy:rollingupdate
+        OptionName: MinInstancesInService
+        Value: !FindInMap [ "deploymentTypeMap", !Ref "DeploymentType", "instanceCountMin" ]
+      - Namespace: aws:autoscaling:trigger
+        OptionName: UpperThreshold
+        Value: 30
+      - Namespace: aws:autoscaling:trigger
+        OptionName: UpperBreachScaleIncrement
+        Value: 1
+      - Namespace: aws:autoscaling:trigger
+        OptionName: Unit
+        Value: Percent
+      - Namespace: aws:autoscaling:trigger
+        OptionName: Statistic
+        Value: Average
+      - Namespace: aws:autoscaling:trigger
+        OptionName: Period
+        Value: 5
+      - Namespace: aws:autoscaling:trigger
+        OptionName: MeasureName
+        Value: CPUUtilization
+      - Namespace: aws:autoscaling:trigger
+        OptionName: LowerThreshold
+        Value: 25
+      - Namespace: aws:autoscaling:trigger
+        OptionName: LowerBreachScaleIncrement
+        Value: -1
+      - Namespace: aws:autoscaling:trigger
+        OptionName: EvaluationPeriods
+        Value: 2
+      - Namespace: aws:autoscaling:trigger
+        OptionName: BreachDuration
+        Value: 10
+      - Namespace: aws:elasticbeanstalk:application:environment
+        OptionName: DEPLOYMENT_S3_BUCKET
+        Value: !FindInMap [ CONS, TANT, "deploymentPackagesBucket" ]
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "dnsZone" ]
+      Comment: DNS alias for elastic beanstalk environment
+      Name:
+        Fn::Join:
+        - "."
+        - - Ref: PrimaryDNSName
+          - !FindInMap [ !Ref "AWS::AccountId", !Ref "AWS::Region", "dnsZone" ]
+      Type: CNAME
+      TTL: '60'
+      ResourceRecords:
+      - !GetAtt [ EBEnvironment, EndpointURL ]
+
+Outputs:
+  EnvironmentURL:
+    Description: Url of the EB environment for dev
+    Value:
+      !GetAtt [ EBEnvironment, EndpointURL ]
+    Export:
+      Name: !Sub ${AWS::StackName}-EnvironmentURL

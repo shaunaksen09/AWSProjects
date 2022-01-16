@@ -1,0 +1,30 @@
+[
+ {
+     "ParameterKey": "RepositoryBranch",
+     "ParameterValue": "master"
+ },
+ {
+     "ParameterKey": "Repository",
+     "ParameterValue": "project1"
+ },
+ {
+     "ParameterKey": "RepositoryOauth",
+     "ParameterValue": "211d91c0f7e93a702208fd01063580f2113064e5"
+ },
+  {
+     "ParameterKey": "EBApplication",
+     "ParameterValue": "eb-app-EBApplication-IFFN8DCPDD2D"
+ },
+  {
+     "ParameterKey": "EBEnvironment",
+     "ParameterValue": "eb-a-EBEn-NR0DGZAYMB7V"
+ },
+   {
+     "ParameterKey": "DeploymentBucket",
+     "ParameterValue": "elasticbeanstalk-us-east-1-242450823403"
+ },
+ {
+     "ParameterKey": "NotificationTopicArn",
+     "ParameterValue": "arn:aws:sns:us-east-1:242450823403:ElasticBeanstalkNotifications-Environment-eb-a-EBEn-NR0DGZAYMB7V"
+ }
+]

@@ -1,0 +1,133 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  envType:
+    Description: Environment (Staging [s], Production [p].
+    Type: String
+    AllowedValues:
+    - s
+    - p
+  envLoc:
+    Description: Location of the environment (use1). Input whole abbreviation.
+    Type: String
+    AllowedValues:
+    - use1
+  myVPC:
+    Type: String
+    Description: VpcId of your existing Virtual Private Cloud (VPC)
+    Default: vpc-
+  snWebTier1b:
+    Type: String
+    Description: Subnet ID of Management Tier in zone 1b
+    Default: subnet-
+  snWebTier1c:
+    Type: String
+    Description: Subnet ID of Management Tier in zone 1c
+    Default: subnet-
+  PrivRTB1b:
+    Type: String
+    Description: Route table ID of Private route table in zone 1b
+    Default: rtb-
+  PrivRTB1c:
+    Type: String
+    Description: Route table ID of Private route table in zone 1c
+    Default: rtb-
+  MgmtRTB1b:
+    Type: String
+    Description: Route table ID of Management route table in zone 1b
+    Default: rtb-
+  MgmtRTB1c:
+    Type: String
+    Description: Route table ID of Management route table in zone 1c
+    Default: rtb-
+Mappings:
+  SubRange:
+    use1:
+      p: 10.0.0.1/18
+      s: 10.0.1.0/18
+
+  Keys:
+    use1:
+      p: puse1
+      s: suse1
+  HostPrefix:
+    use1:
+      p: puse1
+      s: suse1
+Resources:
+  NAT1EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  NAT2EIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - NAT1EIP
+        - AllocationId
+      SubnetId:
+        Ref: snWebTier1b
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - NAT2EIP
+        - AllocationId
+      SubnetId:
+        Ref: snWebTier1c
+  PrivNAT1aRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivRTB1b
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGateway1
+  PrivNAT1bRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: PrivRTB1c
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGateway2
+  MgmtNAT1aRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: MgmtRTB1b
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGateway1
+  MgmtNAT1bRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: MgmtRTB1c
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: NatGateway2
+Outputs:
+  Finished:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'The Nats for '
+        - Ref: envType
+        - Ref: envLoc
+        - " are ready. IP range served is "
+        - Fn::FindInMap:
+          - SubRange
+          - Ref: envLoc
+          - Ref: envType
+    Description: You can now proceed with deploying other stacks.
+  VPC:
+    Value:
+      Ref: myVPC
+Description: NAT instances The techmart VPC's.

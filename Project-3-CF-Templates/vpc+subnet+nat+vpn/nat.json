@@ -1,0 +1,40 @@
+[
+
+ {
+     "ParameterKey": "envType",
+     "ParameterValue": "s"
+ },
+ {
+     "ParameterKey": "envLoc",
+     "ParameterValue": "use1"
+ },
+  {
+     "ParameterKey": "myVPC",
+     "ParameterValue": "vpc-007ff38fc718567ab"
+ },
+  {
+     "ParameterKey": "snWebTier1b",
+     "ParameterValue": "subnet-0ec7dc45e74f84e0d"
+ },
+ {
+     "ParameterKey": "snWebTier1c",
+     "ParameterValue": "subnet-0c626305235dadfd3"
+ },
+  {
+     "ParameterKey": "PrivRTB1b",
+     "ParameterValue": "rtb-0c827d746e004f4b1"
+ },
+ {
+     "ParameterKey": "PrivRTB1c",
+     "ParameterValue": "rtb-09a0c42111d53ab33"
+ },
+  {
+     "ParameterKey": "MgmtRTB1b",
+     "ParameterValue": "rtb-024114863c0f220e7"
+ },
+  {
+     "ParameterKey": "MgmtRTB1c",
+     "ParameterValue": "rtb-0e867cb52bc92f723"
+ }
+ 
+]

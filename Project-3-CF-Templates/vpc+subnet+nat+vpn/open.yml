@@ -1,0 +1,232 @@
+---
+Description: OpenVPN Access Server Creation
+Mappings:
+  OPENVPNASAMI:
+    ap-northeast-1:
+      AMI: ami-e5364ee4
+    ap-southeast-1:
+      AMI: ami-02a5dc7e
+    ap-southeast-2:
+      AMI: ami-077fe73d
+    eu-west-1:
+      AMI: ami-5b0cf62c
+    sa-east-1:
+      AMI: ami-d73193ca
+    us-east-1:
+      AMI: ami-d34658ba
+    us-west-1:
+      AMI: ami-d08bb295
+    us-west-2:
+      AMI: ami-8e4e24be
+Outputs:
+  RemainingConfigCommand:
+    Description: Command to run to initialise server
+    Value: sudo ovpn-init --ec2
+  openvpnadminurl:
+    Description: URL of OpenVPN admin interface
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Fn::GetAtt:
+          - OpenVPNInstance
+          - PublicIp
+        - ":943/admin"
+  openvpninstanceid:
+    Description: ID of OpenVPN instance
+    Value:
+      Ref: OpenVPNInstance
+  openvpninstancepublicip:
+    Description: IP of OpenVPN instance
+    Value:
+      Fn::GetAtt:
+      - OpenVPNInstance
+      - PublicIp
+Parameters:
+  KeyName:
+    AllowedPattern: "[\\w-\\.]*"
+    ConstraintDescription: Must be valid key name
+    Description: Enter name of existing key
+    MinLength: '1'
+    Type: String
+  OpenVPNAdminPassword:
+    Description: The password for the admin user
+    MaxLength: '41'
+    MinLength: '8'
+    NoEcho: true
+    Type: String
+  OpenVPNAdminUser:
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Must be alphanumeric string
+    Default: openvpn
+    Description: The openvpn admin username (usually openvpn)
+    MaxLength: '16'
+    MinLength: '1'
+    Type: String
+  OpenVPNInstanceEipAllocation:
+    AllowedPattern: eipalloc-[a-f0-9]{8}
+    ConstraintDescription: Must be valid EIP alloc = eipalloc-xxxxxxxx
+    Description: Enter elastic IP allocationeg eipalloc-xxxxxxxx
+    MaxLength: '17'
+    Type: String
+  OpenVPNInstanceType:
+    AllowedValues:
+    - t2.small
+    - t2.medium
+    - m1.small
+    - m1.medium
+    - m1.large
+    - m1.xlarge
+    - m3.medium
+    - m3.large
+    - m3.xlarge
+    - m3.2xlarge
+    - c1.medium
+    - c1.xlarge
+    - c3.large
+    - c3.xlarge
+    - c3.2xlarge
+    - c3.4xlarge
+    - c3.8xlarge
+    - cc2.8xlarge
+    - m2.xlarge
+    - m2.2xlarge
+    - m2.4xlarge
+    - cr1.8xlarge
+    - r3.large
+    - r3.xlarge
+    - r3.2xlarge
+    - r3.4xlarge
+    - r3.8xlarge
+    - hi1.4xlarge
+    - hs1.8xlarge
+    - i2.xlarge
+    - i2.2xlarge
+    - i2.4xlarge
+    - i2.8xlarge
+    - t1.micro
+    - t2.micro
+    - cg1.4xlarge
+    - g2.2xlarge
+    ConstraintDescription: Must be valid EC2 instance type xx.xxxxx
+    Default: t1.micro
+    Description: OpenVPN Instance Type
+    MinLength: '1'
+    Type: String
+  PrefixName:
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: Must be alphanumeric string
+    Description: Prefix name ie <PREFIX>-openvpn
+    MinLength: '1'
+    Type: String
+  PublicSubnetId:
+    AllowedPattern: subnet-[a-f0-9]{8}
+    ConstraintDescription: Must be valid subnet = subnet-xxxxxxxx
+    Description: Public Subnet id eg subnet-xxxxxxxx
+    MaxLength: '18'
+    MinLength: '1'
+    Type: String
+  VpcId:
+    AllowedPattern: vpc-[a-f0-9]{8}
+    ConstraintDescription: Must be valid VPC = vpc-xxxxxxxx
+    Description: VPC ID
+    MinLength: '1'
+    Type: String
+Resources:
+  OpenVPNIPAssoc:
+    Properties:
+      AllocationId:
+        Ref: OpenVPNInstanceEipAllocation
+      InstanceId:
+        Ref: OpenVPNInstance
+    Type: AWS::EC2::EIPAssociation
+  OpenVPNInstance:
+    Properties:
+      IamInstanceProfile:
+        Ref: OpenVPNInstanceProfile
+      ImageId:
+        Fn::FindInMap:
+        - OPENVPNASAMI
+        - Ref: AWS::Region
+        - AMI
+      InstanceType:
+        Ref: OpenVPNInstanceType
+      KeyName:
+        Ref: KeyName
+      SecurityGroupIds:
+      - Ref: OpenVPNInstanceSG
+      SubnetId:
+        Ref: PublicSubnetId
+      Tags:
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: PrefixName
+            - "-"
+            - openvpn
+      - Key: description
+        Value: OpenVPN Instance to allow secure access
+      UserData:
+        Fn::Base64:
+          Fn::Join:
+          - ''
+          - - admin_user=
+            - Ref: OpenVPNAdminUser
+            - "\n"
+            - admin_pw=
+            - Ref: OpenVPNAdminPassword
+            - "\n"
+    Type: AWS::EC2::Instance
+  OpenVPNInstancePolicies:
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Action: s3:ListAllMyBuckets
+          Effect: Allow
+          Resource: arn:aws:s3:::*
+      PolicyName: nat-instance-stub
+      Roles:
+      - Ref: OpenVPNInstanceRole
+    Type: AWS::IAM::Policy
+  OpenVPNInstanceProfile:
+    Properties:
+      Path: "/"
+      Roles:
+      - Ref: OpenVPNInstanceRole
+    Type: AWS::IAM::InstanceProfile
+  OpenVPNInstanceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+      Path: "/"
+    Type: AWS::IAM::Role
+  OpenVPNInstanceSG:
+    Properties:
+      GroupDescription: Control access to/from the openvpn device
+      SecurityGroupIngress:
+      - CidrIp: 0.0.0.0/0
+        FromPort: '22'
+        IpProtocol: tcp
+        ToPort: '22'
+      - CidrIp: 0.0.0.0/0
+        FromPort: '443'
+        IpProtocol: tcp
+        ToPort: '443'
+      - CidrIp: 0.0.0.0/0
+        FromPort: '943'
+        IpProtocol: tcp
+        ToPort: '943'
+      - CidrIp: 0.0.0.0/0
+        FromPort: '1194'
+        IpProtocol: udp
+        ToPort: '1194'
+      VpcId:
+        Ref: VpcId
+    Type: AWS::EC2::SecurityGroup

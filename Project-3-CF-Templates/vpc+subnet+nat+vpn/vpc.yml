@@ -1,0 +1,101 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  envType:
+    Description: Environment (Staging [s], Production [p].
+    Type: String
+    AllowedValues:
+    - s
+    
+  envLoc:
+    Description: Location of the environment (use1 ). Input whole abbreviation.
+    Type: String
+    AllowedValues:
+    - use1
+    
+Mappings:
+  SubRange:
+    use1:
+      p: 10.0.0.1/18
+      s: 10.0.1.0/18
+
+Resources:
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: 'True'
+      EnableDnsHostnames: 'True'
+      CidrBlock:
+        Fn::FindInMap:
+        - SubRange
+        - Ref: envLoc
+        - Ref: envType
+      InstanceTenancy: default
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:
+        Ref: myVPC
+      InternetGatewayId:
+        Ref: myInternetGateway
+  myVPNGateway:
+    Type: AWS::EC2::VPNGateway
+    DependsOn: AttachGateway
+    Properties:
+      Type: ipsec.1
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+  AttachVPNGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: AttachGateway
+    Properties:
+      VpcId:
+        Ref: myVPC
+      VpnGatewayId:
+        Ref: myVPNGateway
+Outputs:
+  Finished:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'The environment '
+        - Ref: envType
+        - Ref: envLoc
+        - " is ready. IP range is "
+        - Fn::FindInMap:
+          - SubRange
+          - Ref: envLoc
+          - Ref: envType
+    Description: You can now proceed with deployment of the networking template
+  VPC:
+    Value:
+      Ref: myVPC
+  InternetGateway:
+    Value:
+      Ref: myInternetGateway
+  VGW:
+    Value:
+      Ref: myVPNGateway
+Description: VPC for The techmartguru.

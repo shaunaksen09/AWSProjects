@@ -1,0 +1,23 @@
+[
+
+ {
+     "ParameterKey": "envType",
+     "ParameterValue": "s"
+ },
+ {
+     "ParameterKey": "envLoc",
+     "ParameterValue": "use1"
+ },
+  {
+     "ParameterKey": "myInternetGateway",
+     "ParameterValue": "igw-049f84cfbd78b9fba"
+ },
+ {
+     "ParameterKey": "myVGW",
+     "ParameterValue": "vgw-0eb153c0d6dd1e40f"
+ },
+  {
+     "ParameterKey": "myVPC",
+     "ParameterValue": "vpc-007ff38fc718567ab"
+ }
+]

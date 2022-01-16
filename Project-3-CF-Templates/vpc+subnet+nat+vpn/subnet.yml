@@ -1,0 +1,727 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  envType:
+    Description: Environment (Staging [s], Production [p].
+    Type: String
+    AllowedValues:
+    - s
+    - p
+  envLoc:
+    Description: Location of the environment (use1, usw1). Input whole abbreviation.
+    Type: String
+    AllowedValues:
+    - use1
+  myVPC:
+    Type: String
+    Description: VpcId of your existing Virtual Private Cloud (VPC)
+    Default: " "
+  myInternetGateway:
+    Type: String
+    Description: ID of your VPC's Internet Gateway
+    Default: " "
+  myVGW:
+    Type: String
+    Description: ID of your VPC's VGW
+    Default: " "
+Mappings:
+  SubPrefix:
+    use1:
+      p: 10.0.0
+      s: 10.0.1
+      location: us-east-1
+      zone1: b
+      zone2: c
+  SubRange:
+    use1:
+      p: 10.0.0.1/18
+      s: 10.0.1.0/18
+
+  Subnets:
+    WebTier:
+      a: 0.0/24
+      b: 1.0/24
+    CacheTier:
+      a: 2.0/24
+      b: 3.0/24
+    AppTier:
+      a: 4.0/24
+      b: 5.0/24
+    DataTier:
+      a: 6.0/24
+      b: 7.0/24
+    Management:
+      a: 8.0/24
+      b: 9.0/24
+Resources:
+  InternetAccess:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - pub
+  myRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: InternetAccess
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: myInternetGateway
+  priv1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - priv1b
+  priv1c:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - priv1c
+  mgmt1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - mgmt1b
+  mgmt1c:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId:
+        Ref: myVPC
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - mgmt1c
+  snWebTier1b:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone1
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - WebTier
+            - a
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - WebTier1b
+  snWebTier1bRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snWebTier1b
+      RouteTableId:
+        Ref: InternetAccess
+  snWebTier1c:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone2
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - WebTier
+            - b
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - WebTier1c
+  snWebTier1cRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snWebTier1c
+      RouteTableId:
+        Ref: InternetAccess
+  snCacheTier1b:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone1
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - CacheTier
+            - a
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - CacheTier1b
+  snCacheTier1bRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snCacheTier1b
+      RouteTableId:
+        Ref: priv1b
+  snCacheTier1c:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone2
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - CacheTier
+            - b
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - CacheTier1c
+  snCacheTier1cRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snCacheTier1c
+      RouteTableId:
+        Ref: priv1c
+  snManagement1b:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone1
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - Management
+            - a
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - MgmtTier1b
+  snManagement1bRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snManagement1b
+      RouteTableId:
+        Ref: mgmt1b
+  snManagement1c:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone2
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - Management
+            - b
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - MgmtTier1c
+  snManagement1cRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snManagement1c
+      RouteTableId:
+        Ref: mgmt1c
+  snAppTier1b:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone1
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - AppTier
+            - a
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - AppTier1b
+  snAppTier1bRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snAppTier1b
+      RouteTableId:
+        Ref: priv1b
+  snAppTier1c:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone2
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - AppTier
+            - b
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - AppTier1c
+  snAppTier1cRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snAppTier1c
+      RouteTableId:
+        Ref: priv1c
+  snDataTier1b:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone1
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - DataTier
+            - a
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - DataTier1b
+  snDataTier1bRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snDataTier1b
+      RouteTableId:
+        Ref: priv1b
+  snDataTier1c:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: myVPC
+      AvailabilityZone:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - location
+          - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - zone2
+      CidrBlock:
+        Fn::Join:
+        - ''
+        - - Fn::FindInMap:
+            - SubPrefix
+            - Ref: envLoc
+            - Ref: envType
+          - Fn::FindInMap:
+            - Subnets
+            - DataTier
+            - b
+      Tags:
+      - Key: Environment
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+      - Key: Name
+        Value:
+          Fn::Join:
+          - ''
+          - - Ref: envType
+            - Ref: envLoc
+            - "-"
+            - DataTier1c
+  snDataTier1cRTAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:
+        Ref: snDataTier1c
+      RouteTableId:
+        Ref: priv1c
+  myVPNGatewayRouteProp:
+    Type: AWS::EC2::VPNGatewayRoutePropagation
+    Properties:
+      RouteTableIds:
+      - Ref: priv1b
+      - Ref: priv1c
+      - Ref: mgmt1b
+      - Ref: mgmt1c
+      VpnGatewayId:
+        Ref: myVGW
+Outputs:
+  Finished:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'The environment '
+        - Ref: envType
+        - Ref: envLoc
+        - " is ready. IP range is "
+        - Fn::FindInMap:
+          - SubRange
+          - Ref: envLoc
+          - Ref: envType
+    Description: You can now proceed with deployment of the NAT template.
+  VPC:
+    Value:
+      Ref: myVPC
+  WebTierSubnets:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'snWebTier1b ID: '
+        - Ref: snWebTier1b
+        - " and "
+        - 'snWebTier1c ID: '
+        - Ref: snWebTier1c
+  CacheTierSubnets:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'snCacheTier1b ID: '
+        - Ref: snCacheTier1b
+        - " and "
+        - 'snCacheTier1c ID: '
+        - Ref: snCacheTier1c
+  DataTierSubnets:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'snDataTier1b ID: '
+        - Ref: snDataTier1b
+        - " and "
+        - 'snDataTier1c ID: '
+        - Ref: snDataTier1c
+  AppTierSubnets:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'snAppTier1b ID: '
+        - Ref: snAppTier1b
+        - " and "
+        - 'snAppTier1c ID: '
+        - Ref: snAppTier1c
+  ManagementTierSubnets:
+    Value:
+      Fn::Join:
+      - ''
+      - - 'snManagement1b ID: '
+        - Ref: snManagement1b
+        - " and "
+        - 'snManagement1c ID: '
+        - Ref: snManagement1c
+Description: Networking for The Techmart VPC.
